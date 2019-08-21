@@ -180,6 +180,8 @@ func execContainer(id string, config Configuration) error {
 	args = append(args, "--interactive")
 	args = append(args, id)
 	args = append(args, config.Shell)
+	args = append(args, "--login")
+	args = append(args, "-i")
 
 	if err := syscall.Exec(args[0], args, os.Environ()); err != nil {
 		return err
