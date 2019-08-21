@@ -119,7 +119,7 @@ func startContainer(config Configuration) (string, error) {
 			Env:             env,
 			Healthcheck:     nil,
 			Image:           config.ImageName,
-			Volumes:         map[string]struct{}{},
+			Volumes:         nil,
 			WorkingDir:      config.UserCwd,
 			Entrypoint:      init,
 			NetworkDisabled: false,
@@ -132,13 +132,13 @@ func startContainer(config Configuration) (string, error) {
 			Binds:      binds,
 			AutoRemove: true,
 			// Applicable to UNIX platforms
-			CapAdd:          []string{},
+			CapAdd:          nil,
 			CapDrop:         []string{"SETUID", "SETGID", "NET_RAW", "MKNOD"},
-			Capabilities:    []string{},
+			Capabilities:    nil,
 			Privileged:      false,
 			PublishAllPorts: false,
 			ReadonlyRootfs:  true,
-			SecurityOpt:     []string{}, // TODO: Enable selinux etc
+			SecurityOpt:     nil, // TODO: Enable selinux etc
 			//UsernsMode:      UsernsMode, // TODO: Enable the user namespace to use for the container
 		},
 		nil, config.ContainerName)
@@ -170,6 +170,12 @@ func execContainer(id string, config Configuration) error {
 	if terminal.IsTerminal(int(os.Stdout.Fd())) {
 		args = append(args, "--tty")
 	}
+
+	for _, e := range config.Env {
+		args = append(args, "-e")
+		args = append(args, e)
+	}
+
 	// TODO: Handle scp etc
 	args = append(args, "--interactive")
 	args = append(args, id)

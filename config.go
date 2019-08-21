@@ -206,6 +206,7 @@ func getInterpolatedConfig(config *Configuration, configInterpolations configInt
 	config.ContainerName = tmplConfigVar(config.ContainerName, &configInterpolations)
 
 	for i, e := range config.Env {
+		e = os.ExpandEnv(e)
 		config.Env[i] = tmplConfigVar(e, &configInterpolations)
 	}
 
