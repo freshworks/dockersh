@@ -167,21 +167,30 @@ func execContainer(id string, config Configuration) error {
 	args = append(args, fmt.Sprintf("%d:%d", config.UserId, config.GroupId))
 	args = append(args, "--workdir")
 	args = append(args, config.UserCwd)
-	if terminal.IsTerminal(int(os.Stdout.Fd())) {
-		args = append(args, "--tty")
-	}
 
 	for _, e := range config.Env {
 		args = append(args, "-e")
 		args = append(args, e)
 	}
 
-	// TODO: Handle scp etc
+	if terminal.IsTerminal(int(os.Stdout.Fd())) {
+		args = append(args, "--tty")
+	}
+
 	args = append(args, "--interactive")
+
 	args = append(args, id)
+
 	args = append(args, config.Shell)
-	args = append(args, "--login")
-	args = append(args, "-i")
+	if cmd != "" {
+		args = append(args, "-c")
+		args = append(args, cmd)
+	} else {
+		args = append(args, "--login")
+		if os.Getenv("PS1") != "" {
+			args = append(args, "-i")
+		}
+	}
 
 	if err := syscall.Exec(args[0], args, os.Environ()); err != nil {
 		return err

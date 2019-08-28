@@ -9,9 +9,11 @@ import (
 )
 
 var debug bool
+var cmd string
 
 func init() {
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging. Default : 'false'")
+	flag.StringVar(&cmd, "c", "", "Run command inside the container, using login shell")
 	flag.Parse()
 
 	lvl, ok := os.LookupEnv("LOG_LEVEL")
