@@ -141,6 +141,9 @@ func startContainer(config Configuration) (string, error) {
 			PublishAllPorts: false,
 			ReadonlyRootfs:  true,
 			SecurityOpt:     nil, // TODO: Enable selinux etc
+			Resources: container.Resources{
+				Memory: config.MemoryQuota,
+			},
 			//UsernsMode:      UsernsMode, // TODO: Enable the user namespace to use for the container
 		},
 		nil, config.ContainerName)

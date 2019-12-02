@@ -43,6 +43,7 @@ type Configuration struct {
 	EnableUserReverseForward    bool
 	UserId                      int
 	GroupId                     int
+	MemoryQuota                 int64
 }
 
 func (c Configuration) Dump() string {
@@ -171,6 +172,9 @@ func mergeConfigs(old Configuration, new Configuration, blacklist bool) (ret Con
 	}
 	if !blacklist && new.EnableUserConfig == true {
 		old.EnableUserConfig = true
+	}
+	if !blacklist && new.MemoryQuota > 0 {
+		old.MemoryQuota = new.MemoryQuota
 	}
 	return old
 }
