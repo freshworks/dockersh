@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh/terminal"
@@ -143,6 +144,14 @@ func startContainer(config Configuration) (string, error) {
 			SecurityOpt:     nil, // TODO: Enable selinux etc
 			Resources: container.Resources{
 				Memory: config.MemoryQuota,
+			},
+			Mounts: []mount.Mount{
+				{
+					Target:   "/var/run/screen",
+					Source:   "",
+					Type:     "volume",
+					ReadOnly: false,
+				},
 			},
 			//UsernsMode:      UsernsMode, // TODO: Enable the user namespace to use for the container
 		},
