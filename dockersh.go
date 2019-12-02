@@ -62,7 +62,7 @@ func main() {
 	logrus.Debugf("Container ID: %v", id)
 	logrus.Debug("Exec into the container")
 
-	err = execContainer(id, config)
+	err = execContainer2(id, config)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not exec into container: %v\n", err)
 	}
