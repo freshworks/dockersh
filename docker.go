@@ -79,7 +79,7 @@ func startContainer(config Configuration) (string, error) {
 
 	var init []string
 	if config.Entrypoint == "internal" {
-		init = []string{"/bin/sh", "-c", "trap 'exit 0;' SIGINT SIGTERM; while true; do sleep 1000& wait $!; done"}
+		init = []string{"/bin/sh", "-c", "trap 'exit 0;' SIGHUP SIGINT SIGTERM; while true; do sleep infinity& wait $!; done"}
 	} else {
 		init = []string{config.Entrypoint}
 	}
