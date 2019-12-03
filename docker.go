@@ -213,38 +213,30 @@ func execContainer(id string, config Configuration) error {
 	return nil
 }
 
-func handleDockerExecCleanup(config Configuration, dockerId string, dockerBinary string, pidfile string) {
-	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
+func dockerExecCleanup(config Configuration, dockerId string, dockerBinary string, pidfile string) {
+	a := []string{"exec"}
+	a = append(a, dockerId)
+	a = append(a, config.Shell)
+	a = append(a, "-c")
+	a = append(a, fmt.Sprintf("if [ -f %v ]; then kill -HUP -$(cat %v); rm %v; fi", pidfile, pidfile, pidfile))
 
-	go func() {
-		a := []string{"exec"}
-		a = append(a, dockerId)
-		a = append(a, config.Shell)
-		a = append(a, "-c")
-		a = append(a, fmt.Sprintf("if [ -f %v ]; then kill -HUP -$(cat %v); rm %v; fi", pidfile, pidfile, pidfile))
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-		s := <-sigc
+	c := exec.CommandContext(ctx, dockerBinary, a...)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
+	logrus.Debugf("Docker exec cleanup, running: %v", c)
+	err := c.Run()
+	if err == nil {
+		logrus.Debugf("docker exec cleanup finished")
+		return
+	}
 
-		c := exec.CommandContext(ctx, dockerBinary, a...)
+	logrus.Debugf("Error docker exec cleanup: %v", err)
 
-		logrus.Debugf("Handling %v signal, Running: %v", s, c)
-		err := c.Run()
-		if err != nil {
-			logrus.Debugf("Error signal handling: %v", err)
-		}
-
-		if ctx.Err() == context.DeadlineExceeded {
-			logrus.Debugf("Sigal handling timedout")
-		}
-	}()
+	if ctx.Err() == context.DeadlineExceeded {
+		logrus.Debugf("docker exec cleanup timedout")
+	}
 }
 
 func execContainer2(id string, config Configuration) error {
@@ -269,8 +261,32 @@ func execContainer2(id string, config Configuration) error {
 	}
 
 	args = append(args, "--interactive")
-
 	args = append(args, id)
+	args = append(args, config.Shell)
+
+	pidfile := fmt.Sprintf("/tmp/dockersh-exec-%d", os.Getpid())
+
+	if cmd != "" {
+		args = append(args, "-c")
+		args = append(args, cmd)
+	} else {
+		args = append(args, "--login")
+		if os.Getenv("PS1") != "" {
+			args = append(args, "-i")
+		}
+
+		args = append(args, "-c")
+		args = append(args, fmt.Sprintf("echo $$ > %s; exec %v", pidfile, config.Shell))
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := exec.CommandContext(ctx, dockerBinary, args...)
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	c.Env = os.Environ()
 
 	// When this "dockersh" process is signalled/killed (like when ssh
 	// disconnects due to network issue etc), due to a docker bug,
@@ -285,28 +301,21 @@ func execContainer2(id string, config Configuration) error {
 	//
 	//  - Install a signal handler here that will send SIGHUP to the pid
 	//    stored in /tmp/dockersh-exec-${this_process_pid}
-	pidfile := fmt.Sprintf("/tmp/dockersh-exec-%d", os.Getpid())
-	handleDockerExecCleanup(config, id, dockerBinary, pidfile)
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
 
-	args = append(args, config.Shell)
-	if cmd != "" {
-		args = append(args, "-c")
-		args = append(args, cmd)
-	} else {
-		args = append(args, "--login")
-		if os.Getenv("PS1") != "" {
-			args = append(args, "-i")
-		}
+	go func() {
+		s := <-sigc
+		logrus.Debugf("Handling signal: %v", s)
+		cancel()
+	}()
 
-		args = append(args, "-c")
-		args = append(args, fmt.Sprintf("echo $$ > %s; exec %v", pidfile, config.Shell))
-	}
+	defer dockerExecCleanup(config, id, dockerBinary, pidfile)
 
-	c := exec.Command(dockerBinary, args...)
-	c.Stdin = os.Stdin
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-	c.Env = os.Environ()
 	logrus.Debugf("Running command and waiting for it to finish: %v", c)
 	err = c.Run()
 	logrus.Debugf("Command finished: %v", err)
