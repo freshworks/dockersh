@@ -64,7 +64,6 @@ var defaultConfig = Configuration{
 	ContainerUsername: "%u",
 	Shell:             "/bin/ash",
 	DockerSocket:      "/var/run/docker.sock",
-	Entrypoint:        "internal",
 }
 
 func loadAllConfig() (config Configuration, err error) {

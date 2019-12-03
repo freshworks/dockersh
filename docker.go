@@ -79,9 +79,7 @@ func startContainer(config Configuration) (string, error) {
 	binds := []string{"/etc/passwd:/etc/passwd:ro", "/etc/group:/etc/group:ro"}
 
 	var init []string
-	if config.Entrypoint == "internal" {
-		init = []string{"/bin/sh", "-c", "trap 'exit 0;' SIGHUP SIGINT SIGTERM; while true; do sleep infinity& wait $!; done"}
-	} else {
+	if config.Entrypoint != "" {
 		init = []string{config.Entrypoint}
 	}
 	logrus.Debugf("Entry point is: %v", init)
