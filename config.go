@@ -44,6 +44,8 @@ type Configuration struct {
 	UserId                      int
 	GroupId                     int
 	MemoryQuota                 int64
+	LogFile                     string
+	LogLevel                    string
 }
 
 func (c Configuration) Dump() string {
@@ -174,6 +176,12 @@ func mergeConfigs(old Configuration, new Configuration, blacklist bool) (ret Con
 	}
 	if !blacklist && new.MemoryQuota > 0 {
 		old.MemoryQuota = new.MemoryQuota
+	}
+	if !blacklist && new.LogFile != "" {
+		old.LogFile = new.LogFile
+	}
+	if !blacklist && new.LogLevel != "" {
+		old.LogLevel = new.LogLevel
 	}
 	return old
 }

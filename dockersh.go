@@ -15,20 +15,6 @@ func init() {
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging. Default : 'false'")
 	flag.StringVar(&cmd, "c", "", "Run command inside the container, using login shell")
 	flag.Parse()
-
-	lvl, ok := os.LookupEnv("LOG_LEVEL")
-	if ok {
-		ll, err := logrus.ParseLevel(lvl)
-		if err == nil {
-			logrus.SetLevel(ll)
-		}
-	} else {
-		if debug {
-			logrus.SetLevel(logrus.DebugLevel)
-		} else {
-			logrus.SetLevel(logrus.InfoLevel)
-		}
-	}
 }
 
 func main() {
@@ -40,6 +26,31 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Could not load config: %v\n", err)
 		return
 	}
+
+	if config.LogFile != "" {
+		logFile, err := os.OpenFile(config.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			logrus.Debugf("Failed to open log file %s for output: %s", config.LogFile, err)
+		} else {
+			logrus.SetOutput(logFile)
+			logrus.RegisterExitHandler(func() {
+				if logFile == nil {
+					return
+				}
+				logFile.Close()
+			})
+		}
+	}
+
+	if config.LogLevel != "" {
+		ll, err := logrus.ParseLevel(config.LogLevel)
+		if err == nil {
+			logrus.SetLevel(ll)
+		} else {
+			logrus.SetLevel(logrus.InfoLevel)
+		}
+	}
+
 	logrus.Debugf("Config dump: %+v", config)
 
 	logrus.Debugf("Checking for container: name=%v", config.ContainerName)
@@ -55,6 +66,7 @@ func main() {
 		id, err = startContainer(config)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "could not start container: %s\n", err)
+			logrus.Debugf("could not start container: %s\n", err)
 			return
 		}
 	}
